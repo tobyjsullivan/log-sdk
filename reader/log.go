@@ -6,7 +6,7 @@ type Log struct {
     ID LogID
 }
 
-type LogID uuid.UUID
+type LogID [16]byte
 
 func (id *LogID) String() string {
     uid := uuid.UUID(*id)
