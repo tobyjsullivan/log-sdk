@@ -136,7 +136,6 @@ func (sub *subscription) runPollLoop(ctx context.Context, c *Client) {
     for {
         select {
         case <-t:
-            c.logLn("Polling for new events after ", sub.previousEvent.String())
             sub.previousEvent = c.processEvents(sub.logId, sub.previousEvent, sub.onEventCommitted)
         case <-ctx.Done():
             return
@@ -145,14 +144,15 @@ func (sub *subscription) runPollLoop(ctx context.Context, c *Client) {
 }
 
 func (c *Client) processEvents(logId LogID, after EventID, callback func (*Event)) EventID {
-    c.logLn("Checking for new events on log:", logId.String())
     events, err := c.GetEvents(logId, after)
     if err != nil {
         c.logLn("Error fetching events for subscription.", err.Error())
         return after
     }
 
-    c.logLn("Found", len(events), "events")
+    if num := len(events); num > 0 {
+        c.logLn(fmt.Sprintf("Found %d new events", num))
+    }
 
     lastEvent := after
     for _, e := range events {
