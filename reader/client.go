@@ -133,6 +133,7 @@ func (sub *subscription) runPollLoop(ctx context.Context, c *Client) {
     for {
         select {
         case <-t:
+            c.logLn("Polling for new events after ", sub.previousEvent.String())
             sub.previousEvent = c.processEvents(sub.logId, sub.previousEvent, sub.onEventCommitted)
         case <-ctx.Done():
             return
