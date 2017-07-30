@@ -63,7 +63,10 @@ func (c *Client) GetEvents(logId LogID, after EventID) ([]*Event, error) {
         Path: fmt.Sprintf("/logs/%s/events", logId.String()),
     })
 
-    endpoint.Query().Set("after", after.String())
+
+    q := endpoint.Query()
+    q.Set("after", after.String())
+    endpoint.RawQuery = q.Encode()
 
     resp, err := http.Get(endpoint.String())
     if err != nil {
@@ -142,7 +145,7 @@ func (sub *subscription) runPollLoop(ctx context.Context, c *Client) {
 }
 
 func (c *Client) processEvents(logId LogID, after EventID, callback func (*Event)) EventID {
-    c.logLn("Checking for new events on log:", logId)
+    c.logLn("Checking for new events on log:", logId.String())
     events, err := c.GetEvents(logId, after)
     if err != nil {
         c.logLn("Error fetching events for subscription.", err.Error())
