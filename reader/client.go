@@ -102,13 +102,17 @@ func (c *Client) GetEvents(logId LogID, after EventID) ([]*Event, error) {
     return events, nil
 }
 
-func (c *Client) Subscribe(logId LogID, after EventID, onEventCommitted func (*Event)) context.CancelFunc {
+func (c *Client) Subscribe(logId LogID, after EventID, onEventCommitted func (*Event), hydrate bool) context.CancelFunc {
     ctx, cancel := context.WithCancel(context.Background())
 
     sub := &subscription{
         logId: logId,
         previousEvent: after,
         onEventCommitted: onEventCommitted,
+    }
+
+    if hydrate {
+        sub.previousEvent = c.processEvents(logId, after, sub.onEventCommitted)
     }
 
     c.subscriptions = append(c.subscriptions, sub)
@@ -129,21 +133,30 @@ func (sub *subscription) runPollLoop(ctx context.Context, c *Client) {
     for {
         select {
         case <-t:
-            events, err := c.GetEvents(sub.logId, sub.previousEvent)
-            if err != nil {
-                c.logLn("Error fetching events for subscription.", err.Error())
-                continue
-            }
-
-            for _, e := range events {
-                c.logLn("Event found:", e.ID)
-                sub.onEventCommitted(e)
-                sub.previousEvent = e.ID
-            }
+            sub.previousEvent = c.processEvents(sub.logId, sub.previousEvent, sub.onEventCommitted)
         case <-ctx.Done():
             return
         }
     }
+}
+
+func (c *Client) processEvents(logId LogID, after EventID, callback func (*Event)) EventID {
+    c.logLn("Checking for new events on log:", logId)
+    events, err := c.GetEvents(logId, after)
+    if err != nil {
+        c.logLn("Error fetching events for subscription.", err.Error())
+        return after
+    }
+
+    c.logLn("Found", len(events), "events")
+
+    lastEvent := after
+    for _, e := range events {
+        c.logLn("Event found:", e.ID)
+        callback(e)
+        lastEvent = e.ID
+    }
+    return lastEvent
 }
 
 type eventsResponseFmt struct {
