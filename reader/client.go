@@ -152,7 +152,7 @@ func (c *Client) processEvents(logId LogID, after EventID, callback func (*Event
 
     lastEvent := after
     for _, e := range events {
-        c.logLn("Event found:", e.ID)
+        c.logLn("Event found:", e.ID.String())
         callback(e)
         lastEvent = e.ID
     }
